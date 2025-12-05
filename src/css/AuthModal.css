@@ -1,0 +1,316 @@
+/* 模态框遮罩层 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 模态框主体 */
+.modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 450px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 模态框头部 */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 25px 30px 15px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #333;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+/* 标签按钮 */
+.tab-buttons {
+  display: flex;
+  padding: 0 30px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tab-button {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 15px 20px;
+  font-size: 16px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.tab-button.active {
+  color: #2575fc;
+  font-weight: 600;
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  border-radius: 3px 3px 0 0;
+}
+
+.tab-button:hover:not(.active) {
+  color: #333;
+  background: #f8f9fa;
+}
+
+/* 模态框主体内容 */
+.modal-body {
+  padding: 30px;
+}
+
+/* 表单样式 */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #eaeaea;
+  border-radius: 8px;
+  font-size: 15px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  background: #fafbfc;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #2575fc;
+  box-shadow: 0 0 0 3px rgba(37, 117, 252, 0.1);
+  background: white;
+}
+
+.form-group input:invalid:not(:focus) {
+  border-color: #ff4757;
+}
+
+/* 提交按钮 */
+.submit-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 10px;
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(37, 117, 252, 0.3);
+}
+
+.submit-btn:active {
+  transform: translateY(0);
+}
+
+/* 模态框底部 */
+.modal-footer {
+  padding: 20px 30px;
+  text-align: center;
+  border-top: 1px solid #f0f0f0;
+  background: #fafbfc;
+}
+
+.modal-footer p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.modal-footer a {
+  color: #2575fc;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.modal-footer a:hover {
+  color: #6a11cb;
+  text-decoration: underline;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 15px;
+    align-items: flex-start;
+    padding-top: 50px;
+  }
+  
+  .modal {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  
+  .modal-header {
+    padding: 20px 25px 15px;
+  }
+  
+  .modal-header h2 {
+    font-size: 20px;
+  }
+  
+  .tab-buttons {
+    padding: 0 25px;
+  }
+  
+  .modal-body {
+    padding: 25px;
+  }
+  
+  .modal-footer {
+    padding: 15px 25px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    padding: 10px;
+    padding-top: 30px;
+  }
+  
+  .modal-header {
+    padding: 15px 20px 10px;
+  }
+  
+  .modal-header h2 {
+    font-size: 18px;
+  }
+  
+  .tab-buttons {
+    padding: 0 20px;
+  }
+  
+  .tab-button {
+    padding: 12px 15px;
+    font-size: 14px;
+  }
+  
+  .modal-body {
+    padding: 20px;
+  }
+  
+  .form-group input {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  
+  .submit-btn {
+    padding: 12px;
+    font-size: 15px;
+  }
+  
+  .modal-footer {
+    padding: 12px 20px;
+  }
+  
+  .modal-footer p {
+    font-size: 13px;
+  }
+}
+
+/* 加载状态 */
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.submit-btn:disabled:hover {
+  box-shadow: none;
+}
+
+/* 错误状态 */
+.form-group.error input {
+  border-color: #ff4757;
+  background: #fff5f5;
+}
+
+.form-group .error-message {
+  color: #ff4757;
+  font-size: 12px;
+  margin-top: 5px;
+  display: block;
+}
+
+/* 成功状态 */
+.form-group.success input {
+  border-color: #2ed573;
+  background: #f0fff4;
+}
