@@ -1,7 +1,8 @@
+
 import FileCard from './FileCard';
 
-// 文件区域组件
-function FileSection({ isLoggedIn, files, onDownload }) {
+// 文件区组件
+function FileSection({ isLoggedIn, files, onDownload, onEdit }) {
   return (
     <section className="file-section">
       <div className="section-header">
@@ -19,6 +20,7 @@ function FileSection({ isLoggedIn, files, onDownload }) {
               key={file.id} 
               file={file} 
               onDownload={onDownload}
+              onEdit={onEdit}
             />
           ))}
         </div>
