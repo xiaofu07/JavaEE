@@ -7,20 +7,32 @@ import Sidebar from './components/Sidebar';
 import FileEditor from './components/FileEditor';
 import { CollaborationProvider } from './contexts/CollaborationContext';
 import { sampleFiles, sampleBuckets } from './data/sampleData';
+import BucketManager from './components/BucketManager';
 
 // 主应用组件
 function App() {
+  const initialUserId = localStorage.getItem('userId') || `user_${Date.now()}`;
+  const initialUsername = '当前用户';
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
-  const [buckets, setBuckets] = useState(sampleBuckets);
-  const [currentBucketIndex, setCurrentBucketIndex] = useState(0);
-  const files = buckets[currentBucketIndex]?.files || sampleFiles;
+  const [buckets, setBuckets] = useState(() => sampleBuckets.map(b => ({
+    ...b,
+    ownerId: b.ownerId || initialUserId,
+    ownerName: b.ownerName || initialUsername,
+    permissions: b.permissions || []
+  })));
+  const [currentBucketId, setCurrentBucketId] = useState(() => sampleBuckets[0]?.id || null);
   const [editingFile, setEditingFile] = useState(null);
+  const [showBucketManager, setShowBucketManager] = useState(false);
   const [userData] = useState({
-    id: localStorage.getItem('userId') || `user_${Date.now()}`,
-    username: '当前用户'
+    id: initialUserId,
+    username: initialUsername
   });
+
+  const currentBucketIndex = buckets.findIndex(bucket => bucket.id === currentBucketId);
+  const currentBucket = currentBucketIndex >= 0 ? buckets[currentBucketIndex] : buckets[0];
+  const files = currentBucket?.files || sampleFiles;
 
   // 初始化用户ID
   useEffect(() => {
@@ -55,11 +67,13 @@ function App() {
       content: '# 新文件\n\n欢迎使用云存储编辑功能！\n\n这是一个支持多人协同编辑的在线文档。\n\n## 功能特性\n\n✅ 实时多人协同编辑\n✅ 自动保存\n✅ 版本历史\n✅ 在线预览\n✅ 多格式支持\n\n> 开始协作吧！'
     };
     setBuckets(prev => {
+      const idx = prev.findIndex(bucket => bucket.id === currentBucketId);
+      const targetIndex = idx >= 0 ? idx : 0;
       const copy = [...prev];
-      const bucket = { ...copy[currentBucketIndex] };
+      const bucket = { ...copy[targetIndex] };
       bucket.files = [newFile, ...(bucket.files || [])];
       bucket.usedGB = Math.max(0, (bucket.usedGB || 0) + 0.001); // 模拟占用
-      copy[currentBucketIndex] = bucket;
+      copy[targetIndex] = bucket;
       return copy;
     });
     alert('新文件已创建！');
@@ -98,7 +112,7 @@ function App() {
 
   // 处理备份
   const handleBackup = () => {
-    const backupData = JSON.stringify(buckets[currentBucketIndex]?.files || [], null, 2);
+    const backupData = JSON.stringify(currentBucket?.files || [], null, 2);
     const blob = new Blob([backupData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -123,21 +137,84 @@ function App() {
   // 保存文件编辑内容
   const handleSaveFile = (fileId, newContent) => {
     setBuckets(prev => {
+      const idx = prev.findIndex(bucket => bucket.id === currentBucketId);
+      const targetIndex = idx >= 0 ? idx : 0;
       const copy = [...prev];
-      const bucket = { ...copy[currentBucketIndex] };
+      const bucket = { ...copy[targetIndex] };
       bucket.files = bucket.files.map(file =>
         file.id === fileId
           ? { ...file, content: newContent, date: new Date().toISOString().split('T')[0], lastModified: new Date().toLocaleString() }
           : file
       );
-      copy[currentBucketIndex] = bucket;
+      copy[targetIndex] = bucket;
       return copy;
     });
   };
 
-  const handleToggleBucket = () => {
-    setCurrentBucketIndex((idx) => (idx + 1) % buckets.length);
-  }
+  const handleSelectBucket = (bucketId) => {
+    setCurrentBucketId(bucketId);
+    setShowBucketManager(false);
+  };
+
+  const handleCreateBucket = ({ name, capacityGB }) => {
+    if (!name) {
+      alert('请输入桶名称');
+      return;
+    }
+    const newBucket = {
+      id: `bucket-${Date.now()}`,
+      name,
+      capacityGB: Number(capacityGB) || 10,
+      usedGB: 0,
+      files: [],
+      ownerId: userData.id,
+      ownerName: userData.username,
+      permissions: []
+    };
+    setBuckets(prev => [...prev, newBucket]);
+    setCurrentBucketId(newBucket.id);
+  };
+
+  const handleDeleteBucket = (bucketId) => {
+    const target = buckets.find(b => b.id === bucketId);
+    if (!target) return;
+    if (target.ownerId !== userData.id) {
+      alert('只有创建者可以删除此桶');
+      return;
+    }
+    if (buckets.length <= 1) {
+      alert('至少需要保留一个桶');
+      return;
+    }
+    setBuckets(prev => {
+      const filtered = prev.filter(b => b.id !== bucketId);
+      const nextId = currentBucketId === bucketId ? (filtered[0]?.id || null) : currentBucketId;
+      setCurrentBucketId(nextId);
+      return filtered;
+    });
+  };
+
+  const handleAddPermission = (bucketId, permission) => {
+    setBuckets(prev => prev.map(bucket => {
+      if (bucket.id !== bucketId) return bucket;
+      if (bucket.ownerId !== userData.id) return bucket;
+      const perms = bucket.permissions || [];
+      const exists = perms.some(p => p.userId === permission.userId);
+      const updated = exists
+        ? perms.map(p => p.userId === permission.userId ? permission : p)
+        : [...perms, permission];
+      return { ...bucket, permissions: updated };
+    }));
+  };
+
+  const handleRemovePermission = (bucketId, userId) => {
+    setBuckets(prev => prev.map(bucket => {
+      if (bucket.id !== bucketId) return bucket;
+      if (bucket.ownerId !== userData.id) return bucket;
+      const updated = (bucket.permissions || []).filter(p => p.userId !== userId);
+      return { ...bucket, permissions: updated };
+    }));
+  };
 
   // 获得测试数据
   const getDefaultContent = (type, name) => {
@@ -171,8 +248,8 @@ function App() {
               isLoggedIn={isLoggedIn}
               onUpload={handleUpload}
               onBackup={handleBackup}
-              bucket={buckets[currentBucketIndex]}
-              onToggleBucket={handleToggleBucket}
+              bucket={currentBucket}
+              onOpenBucketManager={() => setShowBucketManager(true)}
             />
 
             <FileSection
@@ -180,7 +257,7 @@ function App() {
               files={files}
               onDownload={handleDownload}
               onEdit={handleEditFile}
-              bucketName={buckets[currentBucketIndex]?.name}
+              bucketName={currentBucket?.name}
             />
           </div>
         </div>
@@ -203,6 +280,19 @@ function App() {
             onDownload={(file, content) => handleDownload(file, content)}
           />
         )}
+
+        <BucketManager
+          open={showBucketManager}
+          onClose={() => setShowBucketManager(false)}
+          buckets={buckets}
+          currentBucketId={currentBucket?.id}
+          onSelectBucket={handleSelectBucket}
+          onCreateBucket={handleCreateBucket}
+          onDeleteBucket={handleDeleteBucket}
+          onAddPermission={handleAddPermission}
+          onRemovePermission={handleRemovePermission}
+          currentUserId={userData.id}
+        />
       </div>
     </CollaborationProvider>
   );

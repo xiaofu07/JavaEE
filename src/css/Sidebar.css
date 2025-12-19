@@ -211,6 +211,105 @@
   transition: transform 0.3s ease;
 }
 
+/* 桶列表与权限管理 */
+.bucket-list {
+  margin-bottom: 20px;
+}
+
+.bucket-list-header {
+  font-weight: 600;
+  color: #2d3748;
+  margin: 10px 0;
+}
+
+.bucket-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #fff;
+}
+
+.bucket-item.active {
+  border-color: #6a11cb;
+  box-shadow: 0 4px 10px rgba(106, 17, 203, 0.12);
+}
+
+.bucket-item:hover {
+  transform: translateY(-1px);
+}
+
+.bucket-item-main {
+  flex: 1;
+}
+
+.bucket-name {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.bucket-meta {
+  font-size: 12px;
+  color: #718096;
+}
+
+.bucket-delete {
+  border: none;
+  background: #ffecec;
+  color: #e53e3e;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.bucket-create {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.bucket-create input,
+.bucket-create select {
+  padding: 10px 12px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.permission-panel {
+  margin-top: 20px;
+  padding: 12px;
+  border: 1px dashed rgba(226, 232, 240, 0.9);
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.permission-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.permission-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
 .action-btn:hover span {
   transform: scale(1.2);
 }

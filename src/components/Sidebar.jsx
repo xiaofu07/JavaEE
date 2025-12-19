@@ -2,7 +2,7 @@ import '../css/Sidebar.css'
 import BucketBar from './BucketBar'
 
 // 侧边栏组件
-function Sidebar({ isLoggedIn, onUpload, onBackup, onRestore, bucket, onToggleBucket }) {
+function Sidebar({ isLoggedIn, onUpload, onBackup, onRestore, bucket, onOpenBucketManager }) {
   return (
     <aside className="sidebar">
       {isLoggedIn ? (
@@ -18,7 +18,7 @@ function Sidebar({ isLoggedIn, onUpload, onBackup, onRestore, bucket, onToggleBu
             name={bucket?.name || '存储空间'}
             capacityGB={bucket?.capacityGB || 10}
             usedGB={bucket?.usedGB || 0}
-            onClick={onToggleBucket}
+            onClick={onOpenBucketManager}
           />
           
           <div className="action-buttons">
