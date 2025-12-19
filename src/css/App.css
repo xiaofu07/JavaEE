@@ -330,15 +330,25 @@ body {
 }
 
 .bm-delete {
-  position: absolute;
-  right: 10px;
-  top: 10px;
   border: none;
   background: #ffecec;
   color: #e53e3e;
   padding: 6px 8px;
   border-radius: 6px;
   cursor: pointer;
+}
+
+/* 定位：桶列表项内的删除按钮采用绝对定位 */
+.bm-bucket-item .bm-delete {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+}
+
+/* 定位：权限列表项内的移除按钮跟随内容行内显示 */
+.bm-permission-item .bm-delete {
+  position: static;
+  margin-left: 12px;
 }
 
 .bm-form {
