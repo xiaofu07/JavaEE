@@ -2,11 +2,11 @@
 import FileCard from './FileCard';
 
 // 文件区组件
-function FileSection({ isLoggedIn, files, onDownload, onEdit }) {
+function FileSection({ isLoggedIn, files, onDownload, onEdit, bucketName }) {
   return (
     <section className="file-section">
       <div className="section-header">
-        <h2>我的文件</h2>
+        <h2>{bucketName ? `${bucketName} · 我的文件` : '我的文件'}</h2>
         <div className="search-box">
           <span>🔍</span>
           <input type="text" placeholder="搜索文件..." />

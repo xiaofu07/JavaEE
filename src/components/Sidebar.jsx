@@ -1,7 +1,8 @@
 import '../css/Sidebar.css'
+import BucketBar from './BucketBar'
 
 // 侧边栏组件
-function Sidebar({ isLoggedIn, onUpload, onBackup, onRestore }) {
+function Sidebar({ isLoggedIn, onUpload, onBackup, onRestore, bucket, onToggleBucket }) {
   return (
     <aside className="sidebar">
       {isLoggedIn ? (
@@ -13,13 +14,12 @@ function Sidebar({ isLoggedIn, onUpload, onBackup, onRestore }) {
             </div>
           </div>
           
-          <div className="storage-info">
-            <p>存储空间使用情况</p>
-            <div className="storage-bar">
-              <div className="storage-progress"></div>
-            </div>
-            <p>6.5 GB / 10 GB</p>
-          </div>
+          <BucketBar
+            name={bucket?.name || '存储空间'}
+            capacityGB={bucket?.capacityGB || 10}
+            usedGB={bucket?.usedGB || 0}
+            onClick={onToggleBucket}
+          />
           
           <div className="action-buttons">
             <button className="action-btn" onClick={onUpload}>

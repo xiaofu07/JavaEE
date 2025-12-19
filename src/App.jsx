@@ -6,14 +6,16 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import FileEditor from './components/FileEditor';
 import { CollaborationProvider } from './contexts/CollaborationContext';
-import { sampleFiles } from './data/sampleData';
+import { sampleFiles, sampleBuckets } from './data/sampleData';
 
 // 主应用组件
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
-  const [files, setFiles] = useState(sampleFiles);
+  const [buckets, setBuckets] = useState(sampleBuckets);
+  const [currentBucketIndex, setCurrentBucketIndex] = useState(0);
+  const files = buckets[currentBucketIndex]?.files || sampleFiles;
   const [editingFile, setEditingFile] = useState(null);
   const [userData] = useState({
     id: localStorage.getItem('userId') || `user_${Date.now()}`,
@@ -44,7 +46,7 @@ function App() {
   // 处理文件上传
   const handleUpload = () => {
     const newFile = {
-      id: files.length + 1,
+      id: Date.now(),
       name: '新文件.txt',
       type: 'text',
       size: '1 KB',
@@ -52,7 +54,14 @@ function App() {
       createdAt: new Date().toISOString().split('T')[0],
       content: '# 新文件\n\n欢迎使用云存储编辑功能！\n\n这是一个支持多人协同编辑的在线文档。\n\n## 功能特性\n\n✅ 实时多人协同编辑\n✅ 自动保存\n✅ 版本历史\n✅ 在线预览\n✅ 多格式支持\n\n> 开始协作吧！'
     };
-    setFiles([newFile, ...files]);
+    setBuckets(prev => {
+      const copy = [...prev];
+      const bucket = { ...copy[currentBucketIndex] };
+      bucket.files = [newFile, ...(bucket.files || [])];
+      bucket.usedGB = Math.max(0, (bucket.usedGB || 0) + 0.001); // 模拟占用
+      copy[currentBucketIndex] = bucket;
+      return copy;
+    });
     alert('新文件已创建！');
   };
 
@@ -89,7 +98,7 @@ function App() {
 
   // 处理备份
   const handleBackup = () => {
-    const backupData = JSON.stringify(files, null, 2);
+    const backupData = JSON.stringify(buckets[currentBucketIndex]?.files || [], null, 2);
     const blob = new Blob([backupData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -113,17 +122,22 @@ function App() {
 
   // 保存文件编辑内容
   const handleSaveFile = (fileId, newContent) => {
-    setFiles(files.map(file =>
-      file.id === fileId
-        ? {
-          ...file,
-          content: newContent,
-          date: new Date().toISOString().split('T')[0],
-          lastModified: new Date().toLocaleString()
-        }
-        : file
-    ));
+    setBuckets(prev => {
+      const copy = [...prev];
+      const bucket = { ...copy[currentBucketIndex] };
+      bucket.files = bucket.files.map(file =>
+        file.id === fileId
+          ? { ...file, content: newContent, date: new Date().toISOString().split('T')[0], lastModified: new Date().toLocaleString() }
+          : file
+      );
+      copy[currentBucketIndex] = bucket;
+      return copy;
+    });
   };
+
+  const handleToggleBucket = () => {
+    setCurrentBucketIndex((idx) => (idx + 1) % buckets.length);
+  }
 
   // 获得测试数据
   const getDefaultContent = (type, name) => {
@@ -157,6 +171,8 @@ function App() {
               isLoggedIn={isLoggedIn}
               onUpload={handleUpload}
               onBackup={handleBackup}
+              bucket={buckets[currentBucketIndex]}
+              onToggleBucket={handleToggleBucket}
             />
 
             <FileSection
@@ -164,6 +180,7 @@ function App() {
               files={files}
               onDownload={handleDownload}
               onEdit={handleEditFile}
+              bucketName={buckets[currentBucketIndex]?.name}
             />
           </div>
         </div>
