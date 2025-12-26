@@ -1,0 +1,108 @@
+Enum "permission_level" {
+  "read"
+  "write"
+  "delete"
+  "operator"
+}
+
+Enum "log_level" {
+  "DEBUG"
+  "INFO"
+  "WARN"
+  "ERROR"
+}
+
+Table "users" {
+  "id" serial [pk, increment]
+  "name" varchar(100) [unique, not null]
+  "email" varchar(150) [unique]
+}
+
+Table "team" {
+  "id" serial [pk, increment]
+  "name" varchar(100) [unique, not null]
+  "leader" int [not null]
+  "description" text
+}
+
+Table "user_team" {
+  "users" int
+  "team" int
+
+  Indexes {
+    (users, team) [pk]
+  }
+}
+
+Table "bucket" {
+  "id" serial [pk, increment]
+  "name" varchar(100) [unique, not null]
+  "owner" int [not null]
+  "description" text
+}
+
+Table "bucket_permission" {
+  "bucket" int
+  "team" int
+  "permission" permission_level [not null, default: 'read']
+
+  Indexes {
+    (bucket, team) [pk]
+  }
+}
+
+Table "object" {
+  "id" bigserial [pk, increment]
+  "name" varchar(100)
+  "bucket" int [not null]
+  "hash" "char (256)" [not null]
+  "mime_type" varchar(100)
+  "extension" varchar(50)
+  "last_modified" timestamp [default: `current_timestamp`]
+}
+
+Table "object_permission" {
+  "object" int
+  "team" int
+  "permission" permission_level [not null, check: `permission != 'operator'`]
+
+  Indexes {
+    (object, team) [pk]
+  }
+}
+
+Table "backup" {
+  "id" serial [pk, increment]
+  "name" varchar(100)
+  "bucket" integer [not null]
+  "backup_time" timestamp [not null, default: `current_timestamp`]
+  "comment" text
+}
+
+Table "system_log" {
+  "id" bigserial [pk, increment]
+  "time" timestamp [default: `current_timestamp`]
+  "level" log_level
+  "message" text
+}
+
+Ref:"users"."id" < "team"."leader"
+
+Ref:"users"."id" < "user_team"."users" [delete: cascade]
+
+Ref:"team"."id" < "user_team"."team" [delete: cascade]
+
+Ref:"users"."id" < "bucket"."owner" [delete: cascade]
+
+Ref:"bucket"."id" < "bucket_permission"."bucket" [delete: cascade]
+
+Ref:"team"."id" < "bucket_permission"."team" [delete: cascade]
+
+Ref:"bucket"."id" < "object"."bucket"
+
+Ref:"object"."id" < "object_permission"."object" [delete: cascade]
+
+Ref:"team"."id" < "object_permission"."team" [delete: cascade]
+
+Ref:"bucket"."id" < "backup"."bucket"
+

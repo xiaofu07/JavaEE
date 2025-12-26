@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: MaxIO
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://gungnir:5432/babylon
+    username: lingshin
+  flyway:
+    baseline-on-migrate: true
+  autoconfigure:
+      exclude:
+        # - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+        # - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration

@@ -1,0 +1,99 @@
+@host = localhost
+@port = 8080
+@url = http://{{host}}:{{port}}
+@auth = Basic lingshin:sdfzsefjkt
+
+{{url}}/test
+
+###
+
+POST {{url}}/register
+Content-Type: application/json
+
+{
+  "username": "lingshin",
+  "email": "lingshin@email.com",
+  "password": "emiya"
+}
+
+###
+
+POST {{url}}/login
+Content-Type: application/json
+
+{
+  "username": "lingshin",
+  "password": "emiya"
+}
+
+###
+
+# @attach-cookie-jar
+POST {{url}}/buckets
+Content-Type: application/json
+
+{
+  "name":"zen",
+  "description": "just a test"
+}
+
+###
+
+# @attach-cookie-jar
+GET {{url}}/buckets
+
+###
+
+# @attach-cookie-jar
+GET {{url}}/buckets/205
+
+### 
+
+# @attach-cookie-jar
+DELETE  {{url}}/buckets/205
+
+###
+
+# @attach-cookie-jar
+GET {{url}}/team
+
+###
+
+# @attach-cookie-jar
+POST {{url}}/team
+Content-Type: application/json
+
+{
+  "name":"mozilla",
+  "description": "mozilla ok",
+  "members": [1,2]
+}
+
+###
+
+# @attach-cookie-jar
+DELETE {{url}}/team/120
+
+###
+
+# @attach-cookie-jar
+PATCH {{url}}/team/124
+Content-Type: application/json
+
+{
+  "description": "{{hash}}"
+}
+
+###
+
+# @attach-cookie-jar
+GET {{url}}/team/124
+
+###
+
+# @attach-cookie-jar
+POST {{url}}/blob/lingshin/firefox/babylon.sql
+Upload-Hash: {{hash}}
+Content-Type: text/plain
+
+< ../sql/babylon.sql
