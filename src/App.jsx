@@ -8,6 +8,9 @@ import FileEditor from './components/FileEditor';
 import { CollaborationProvider } from './contexts/CollaborationContext';
 import { sampleFiles, sampleBuckets } from './data/sampleData';
 import BucketManager from './components/BucketManager';
+import config from './config';
+
+const urlbase = config.urlbase();
 
 // 主应用组件
 function App() {
@@ -42,8 +45,19 @@ function App() {
   }, [userData.id]);
 
   // 处理登录
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    const login_rsp = await fetch(`${urlbase}/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        username: 'lingshin',
+        password: 'emiya'
+      })
+    })
+    print
     setIsLoggedIn(true);
     setShowAuthModal(false);
   };
@@ -83,7 +97,7 @@ function App() {
   const handleDownload = (file, content) => {
     let mimeType = 'text/plain';
     let extension = '.txt';
-    
+
     const typeMap = {
       pdf: { mime: 'application/pdf', ext: '.pdf' },
       text: { mime: 'text/plain', ext: '.txt' },
@@ -93,12 +107,12 @@ function App() {
       excel: { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ext: '.xlsx' },
       image: { mime: 'image/jpeg', ext: '.jpg' }
     };
-    
+
     if (typeMap[file.type]) {
       mimeType = typeMap[file.type].mime;
       extension = typeMap[file.type].ext;
     }
-    
+
     const blob = new Blob([content || '无内容'], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
