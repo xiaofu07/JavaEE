@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCollaboration } from '../contexts/CollaborationContext';
 import '../css/FileEditor.css';
 
-const FileEditor = ({ file, onClose, onSave, onDownload }) => {
+const FileEditor = ({ file, onClose, onSave, onDownload, username, bucketName }) => {
   const [content, setContent] = useState(file.content || '');
   const [isEditing, setIsEditing] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -10,6 +10,15 @@ const FileEditor = ({ file, onClose, onSave, onDownload }) => {
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'unsaved'
   const editorRef = useRef(null);
   const cursorRef = useRef(null);
+
+  // 判断文件类型
+  const isImage = file.contentType?.startsWith('image/');
+  const isText = file.contentType?.startsWith('text/') || 
+                 file.contentType === 'application/json' ||
+                 file.contentType === 'application/javascript';
+  
+  // 构建文件URL
+  const fileUrl = `/blob/${username}/${bucketName}/${file.name}`;
 
   const {
     activeUsers,
@@ -177,13 +186,13 @@ const FileEditor = ({ file, onClose, onSave, onDownload }) => {
         <div className="editor-main">
           <div className="file-info">
             <div className="info-item">
-              <strong>文件类型:</strong> {file.type.toUpperCase()}
+              <strong>文件类型:</strong> {(file.contentType || 'unknown').toUpperCase()}
             </div>
             <div className="info-item">
-              <strong>大小:</strong> {file.size}
+              <strong>大小:</strong> {file.size || '未知'}
             </div>
             <div className="info-item">
-              <strong>最后修改:</strong> {file.date}
+              <strong>最后修改:</strong> {file.date || '未知'}
             </div>
             <div className="info-item">
               <strong>创建时间:</strong> {file.createdAt || '未知'}
@@ -208,7 +217,11 @@ const FileEditor = ({ file, onClose, onSave, onDownload }) => {
 
             <div className="editor-wrapper">
               {renderOtherUsersCursors()}
-              {file.type === 'text' || file.type === 'code' ? (
+              {isImage ? (
+                <div className="image-preview">
+                  <img src={fileUrl} alt={file.name} style={{ maxWidth: '100%', maxHeight: '70vh' }} />
+                </div>
+              ) : isText ? (
                 <textarea
                   className="text-editor"
                   value={content}
@@ -218,29 +231,12 @@ const FileEditor = ({ file, onClose, onSave, onDownload }) => {
                   onClick={handleCursorMove}
                   readOnly={!isEditing}
                   placeholder={isEditing ? '开始编辑...' : '切换到编辑模式以修改内容'}
-                  spellCheck={file.type === 'text'}
                 />
-              ) : file.type === 'markdown' ? (
-                <div className="markdown-editor">
-                  <div className="markdown-preview">
-                    <h3>预览</h3>
-                    <div className="preview-content">
-                      {content}
-                    </div>
-                  </div>
-                  <textarea
-                    className="markdown-input"
-                    value={content}
-                    onChange={handleContentChange}
-                    placeholder="# 输入Markdown内容..."
-                    readOnly={!isEditing}
-                  />
-                </div>
               ) : (
-                <div className="unsupported-editor">
-                  <p>⚠️ 此类文件不支持在线编辑</p>
-                  <p>请下载到本地进行编辑</p>
-                  <button className="btn btn-download" onClick={handleDownload}>
+                <div className="unsupported-preview">
+                  <p>⚠️ 此类文件暂不支持预览</p>
+                  <p>文件类型: {file.contentType || '未知'}</p>
+                  <button className="btn btn-download" onClick={() => onDownload(file)}>
                     下载文件
                   </button>
                 </div>

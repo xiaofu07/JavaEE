@@ -1,7 +1,10 @@
 @host = localhost
 @port = 8080
 @url = http://{{host}}:{{port}}
+<<<<<<< HEAD
 @auth = Basic lingshin:sdfzsefjkt
+=======
+>>>>>>> 74f91227fa0a969524001269cbd4d594d80978cd
 
 {{url}}/test
 
@@ -33,7 +36,11 @@ POST {{url}}/buckets
 Content-Type: application/json
 
 {
+<<<<<<< HEAD
   "name":"zen",
+=======
+  "name":"firefox",
+>>>>>>> 74f91227fa0a969524001269cbd4d594d80978cd
   "description": "just a test"
 }
 
@@ -66,7 +73,11 @@ Content-Type: application/json
 {
   "name":"mozilla",
   "description": "mozilla ok",
+<<<<<<< HEAD
   "members": [1,2]
+=======
+  "members": [1]
+>>>>>>> 74f91227fa0a969524001269cbd4d594d80978cd
 }
 
 ###
@@ -92,8 +103,33 @@ GET {{url}}/team/124
 ###
 
 # @attach-cookie-jar
+<<<<<<< HEAD
 POST {{url}}/blob/lingshin/firefox/babylon.sql
 Upload-Hash: {{hash}}
 Content-Type: text/plain
 
 < ../sql/babylon.sql
+=======
+GET {{url}}/blob/lingshin/firefox
+
+###
+
+# @attach-cookie-jar
+GET {{url}}/blob/lingshin/firefox/justfile
+
+###
+
+# @attach-cookie-jar
+GET {{url}}/blob/lingshin/firefox/justfile/history
+
+###
+
+# @attach-cookie-jar
+PATCH {{url}}/blob/lingshin/firefox/justfile
+Content-Type: application/json
+
+{
+  "description": "hello world",
+  "currentHash": "d6"
+}
+>>>>>>> 74f91227fa0a969524001269cbd4d594d80978cd
