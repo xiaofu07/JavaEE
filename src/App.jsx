@@ -100,7 +100,7 @@ function App() {
     const username = form.querySelector('input[type="text"]')?.value?.trim();
     const password = form.querySelector('input[type="password"]')?.value;
     try {
-      const user = login(username, password)
+      const user = await login(username, password)
       setUserData({ id: user.id, username: user.name || user.username || username || '用户', avatar: user.avatar });
       if (user?.id) localStorage.setItem('userId', String(user.id));
       setIsLoggedIn(true);

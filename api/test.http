@@ -1,4 +1,4 @@
-@host = localhost
+@host = gungnir
 @port = 8080
 @url = http://{{host}}:{{port}}
 
