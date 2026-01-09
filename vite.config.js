@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-const host = 'http://gungnir:8080'
+const host = 'http://47.96.254.64:8080'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],

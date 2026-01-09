@@ -338,23 +338,6 @@ function App() {
     }));
   };
 
-  // 获得测试数据
-  const getDefaultContent = (type, name) => {
-    const baseContent = {
-      text: `# ${name}\n\n这是一个文本文件。\n您可以在这里输入任意文本内容。\n\n创建时间: ${new Date().toLocaleString()}\n\n开始编辑吧！`,
-      code: `// ${name}\n// 这是一个代码文件\n\n#include <iostream>\n\nint main() {\n    std::cout << "Hello, Cloud Storage!" << std::endl;\n    return 0;\n}`,
-      markdown: `# ${name}\n\n## 欢迎使用云存储编辑功能！\n\n这是一个支持多人协同编辑的Markdown文档。\n\n### 功能特性\n\n- ✅ 实时多人协同编辑\n- ✅ 自动保存\n- ✅ 版本历史\n- ✅ 在线预览\n- ✅ Markdown支持\n\n> 提示：您和其他协作者可以同时编辑此文档\n\n\`\`\`javascript\n// 示例代码\nconsole.log("多人协同编辑演示");\`\`\``,
-      pdf: 'PDF文件不支持在线编辑，请下载到本地查看。',
-      word: 'Word文档内容（模拟）',
-      excel: 'Excel表格内容（模拟）',
-      psd: 'PSD文件不支持在线编辑',
-      image: '图片文件不支持在线编辑',
-      powerpoint: '演示文稿内容（模拟）'
-    };
-
-    return baseContent[type] || `# ${name}\n\n这是一个不支持在线编辑的文件。\n请下载到本地进行查看和编辑。`;
-  };
-
   return (
     <CollaborationProvider>
       <div>
