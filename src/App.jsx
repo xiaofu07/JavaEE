@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import './css/App.css';
+import { login } from './utils/userService.js'
 import AuthModal from './components/AuthModal';
 import FileSection from './components/FileSection';
 import Navbar from './components/Navbar';
@@ -93,17 +94,7 @@ function App() {
     const username = form.querySelector('input[type="text"]')?.value?.trim();
     const password = form.querySelector('input[type="password"]')?.value;
     try {
-      const res = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ username, password })
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok || body?.code !== 200) {
-        throw new Error(body?.msg || '登录失败');
-      }
-      const user = body?.data || {};
+      const user = login(username, password)
       setUserData({ id: user.id, username: user.name || user.username || username || '用户', avatar: user.avatar });
       if (user?.id) localStorage.setItem('userId', String(user.id));
       setIsLoggedIn(true);
