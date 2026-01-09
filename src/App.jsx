@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './css/App.css';
 import AuthModal from './components/AuthModal';
 import FileSection from './components/FileSection';
@@ -6,8 +6,9 @@ import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import FileEditor from './components/FileEditor';
 import { CollaborationProvider } from './contexts/CollaborationContext';
-import { sampleFiles, sampleBuckets } from './data/sampleData';
 import BucketManager from './components/BucketManager';
+import { uploadFile } from './utils/uploadService';
+import { getAllBuckets, createBucket as apiCreateBucket, deleteBucket as apiDeleteBucket, getBucketFiles } from './utils/bucketService';
 
 // 主应用组件
 function App() {
@@ -16,98 +17,194 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
-  const [buckets, setBuckets] = useState(() => sampleBuckets.map(b => ({
-    ...b,
-    ownerId: b.ownerId || initialUserId,
-    ownerName: b.ownerName || initialUsername,
-    permissions: b.permissions || []
-  })));
-  const [currentBucketId, setCurrentBucketId] = useState(() => sampleBuckets[0]?.id || null);
+  const [buckets, setBuckets] = useState([]);
+  const [currentBucketId, setCurrentBucketId] = useState(null);
+  const [files, setFiles] = useState([]);
   const [editingFile, setEditingFile] = useState(null);
   const [showBucketManager, setShowBucketManager] = useState(false);
-  const [userData] = useState({
+  const [userData, setUserData] = useState({
     id: initialUserId,
-    username: initialUsername
+    username: initialUsername,
+    avatar: null
   });
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const currentBucketIndex = buckets.findIndex(bucket => bucket.id === currentBucketId);
-  const currentBucket = currentBucketIndex >= 0 ? buckets[currentBucketIndex] : buckets[0];
-  const files = currentBucket?.files || sampleFiles;
+  const currentBucket = buckets.find(bucket => bucket.id === currentBucketId) || buckets[0];
 
   // 初始化用户ID
   useEffect(() => {
-    if (!localStorage.getItem('userId')) {
+    if (!localStorage.getItem('userId') && userData.id) {
       localStorage.setItem('userId', userData.id);
     }
   }, [userData.id]);
 
+  // 登录后加载桶列表
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    (async () => {
+      try {
+        const data = await getAllBuckets();
+        setBuckets(data || []);
+        if (data?.length > 0 && !currentBucketId) {
+          setCurrentBucketId(data[0].id);
+        }
+      } catch (err) {
+        console.error('获取桶列表失败:', err);
+      }
+    })();
+  }, [isLoggedIn]);
+
+  // 切换桶时加载文件列表
+  useEffect(() => {
+    if (!isLoggedIn || !currentBucket) return;
+    (async () => {
+      try {
+        const data = await getBucketFiles(userData.username, currentBucket.name);
+        setFiles(data || []);
+      } catch (err) {
+        console.error('获取文件列表失败:', err);
+        setFiles([]);
+      }
+    })();
+  }, [isLoggedIn, currentBucket?.id, userData.username]);
+
+  // 根据 cookie 自动登录
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/user', { credentials: 'include' });
+        if (!res.ok) return;
+        const body = await res.json().catch(() => null);
+        if (!body || body.code !== 200 || !body.data) return;
+        const user = body.data;
+        setUserData({ id: user.id, username: user.name || user.username || '用户', avatar: user.avatar });
+        if (user?.id) localStorage.setItem('userId', String(user.id));
+        setIsLoggedIn(true);
+      } catch {}
+    })();
+  }, []);
+
   // 处理登录
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setIsLoggedIn(true);
-    setShowAuthModal(false);
+    const form = e.target;
+    const username = form.querySelector('input[type="text"]')?.value?.trim();
+    const password = form.querySelector('input[type="password"]')?.value;
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || body?.code !== 200) {
+        throw new Error(body?.msg || '登录失败');
+      }
+      const user = body?.data || {};
+      setUserData({ id: user.id, username: user.name || user.username || username || '用户', avatar: user.avatar });
+      if (user?.id) localStorage.setItem('userId', String(user.id));
+      setIsLoggedIn(true);
+      setShowAuthModal(false);
+    } catch (err) {
+      alert(err.message || '登录失败');
+    }
   };
 
   // 处理注册
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    setIsLoggedIn(true);
-    setShowAuthModal(false);
+    const form = e.target;
+    const username = form.querySelector('input[type="text"]')?.value?.trim();
+    const email = form.querySelector('input[type="email"]')?.value?.trim();
+    const pwInputs = form.querySelectorAll('input[type="password"]');
+    const password = pwInputs[0]?.value;
+    const confirm = pwInputs[1]?.value;
+    if (password !== confirm) {
+      alert('两次输入的密码不一致');
+      return;
+    }
+    try {
+      const res = await fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, email, password })
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || body?.code !== 200) {
+        throw new Error(body?.msg || '注册失败');
+      }
+      const user = body?.data || {};
+      setUserData({ id: user.id, username: user.name || user.username || username || '用户', avatar: user.avatar });
+      if (user?.id) localStorage.setItem('userId', String(user.id));
+      setIsLoggedIn(true);
+      setShowAuthModal(false);
+    } catch (err) {
+      alert(err.message || '注册失败');
+    }
   };
 
   // 处理文件上传
   const handleUpload = () => {
-    const newFile = {
-      id: Date.now(),
-      name: '新文件.txt',
-      type: 'text',
-      size: '1 KB',
-      date: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString().split('T')[0],
-      content: '# 新文件\n\n欢迎使用云存储编辑功能！\n\n这是一个支持多人协同编辑的在线文档。\n\n## 功能特性\n\n✅ 实时多人协同编辑\n✅ 自动保存\n✅ 版本历史\n✅ 在线预览\n✅ 多格式支持\n\n> 开始协作吧！'
-    };
-    setBuckets(prev => {
-      const idx = prev.findIndex(bucket => bucket.id === currentBucketId);
-      const targetIndex = idx >= 0 ? idx : 0;
-      const copy = [...prev];
-      const bucket = { ...copy[targetIndex] };
-      bucket.files = [newFile, ...(bucket.files || [])];
-      bucket.usedGB = Math.max(0, (bucket.usedGB || 0) + 0.001); // 模拟占用
-      copy[targetIndex] = bucket;
-      return copy;
-    });
-    alert('新文件已创建！');
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      await uploadFile(file, userData.username, currentBucket?.name, setUploadProgress);
+
+      // 重新加载文件列表
+      const data = await getBucketFiles(userData.username, currentBucket.name);
+      setFiles(data || []);
+      
+      alert('文件上传成功！');
+    } catch (err) {
+      alert('上传失败: ' + (err.message || '未知错误'));
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      e.target.value = '';
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
   };
 
   // 处理文件下载
-  const handleDownload = (file, content) => {
-    let mimeType = 'text/plain';
-    let extension = '.txt';
-    
-    const typeMap = {
-      pdf: { mime: 'application/pdf', ext: '.pdf' },
-      text: { mime: 'text/plain', ext: '.txt' },
-      code: { mime: 'text/plain', ext: '.txt' },
-      markdown: { mime: 'text/markdown', ext: '.md' },
-      word: { mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext: '.docx' },
-      excel: { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ext: '.xlsx' },
-      image: { mime: 'image/jpeg', ext: '.jpg' }
-    };
-    
-    if (typeMap[file.type]) {
-      mimeType = typeMap[file.type].mime;
-      extension = typeMap[file.type].ext;
+  const handleDownload = async (file) => {
+    try {
+      const url = `/blob/${userData.username}/${currentBucket?.name}/${file.name}`;
+      const res = await fetch(url, { credentials: 'include' });
+      
+      if (!res.ok) {
+        throw new Error('下载失败');
+      }
+      
+      const blob = await res.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      alert('下载失败: ' + (err.message || '未知错误'));
     }
-    
-    const blob = new Blob([content || '无内容'], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = file.name.replace(/\.[^/.]+$/, "") + extension;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   // 处理备份
@@ -156,42 +253,38 @@ function App() {
     setShowBucketManager(false);
   };
 
-  const handleCreateBucket = ({ name, capacityGB }) => {
+  const handleCreateBucket = async ({ name, capacityGB }) => {
     if (!name) {
       alert('请输入桶名称');
       return;
     }
-    const newBucket = {
-      id: `bucket-${Date.now()}`,
-      name,
-      capacityGB: Number(capacityGB) || 10,
-      usedGB: 0,
-      files: [],
-      ownerId: userData.id,
-      ownerName: userData.username,
-      permissions: []
-    };
-    setBuckets(prev => [...prev, newBucket]);
-    setCurrentBucketId(newBucket.id);
+    try {
+      const newBucket = await apiCreateBucket(name, '');
+      setBuckets(prev => [...prev, newBucket]);
+      setCurrentBucketId(newBucket.id);
+    } catch (err) {
+      alert('创建桶失败: ' + (err.message || '未知错误'));
+    }
   };
 
-  const handleDeleteBucket = (bucketId) => {
+  const handleDeleteBucket = async (bucketId) => {
     const target = buckets.find(b => b.id === bucketId);
     if (!target) return;
-    if (target.ownerId !== userData.id) {
-      alert('只有创建者可以删除此桶');
-      return;
-    }
     if (buckets.length <= 1) {
       alert('至少需要保留一个桶');
       return;
     }
-    setBuckets(prev => {
-      const filtered = prev.filter(b => b.id !== bucketId);
-      const nextId = currentBucketId === bucketId ? (filtered[0]?.id || null) : currentBucketId;
-      setCurrentBucketId(nextId);
-      return filtered;
-    });
+    try {
+      await apiDeleteBucket(bucketId);
+      setBuckets(prev => {
+        const filtered = prev.filter(b => b.id !== bucketId);
+        const nextId = currentBucketId === bucketId ? (filtered[0]?.id || null) : currentBucketId;
+        setCurrentBucketId(nextId);
+        return filtered;
+      });
+    } catch (err) {
+      alert('删除桶失败: ' + (err.message || '未知错误'));
+    }
   };
 
   const handleAddPermission = (bucketId, permission) => {
@@ -236,6 +329,12 @@ function App() {
   return (
     <CollaborationProvider>
       <div>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
         <Navbar
           isLoggedIn={isLoggedIn}
           setIsLoggedIn={setIsLoggedIn}
@@ -250,12 +349,13 @@ function App() {
               onBackup={handleBackup}
               bucket={currentBucket}
               onOpenBucketManager={() => setShowBucketManager(true)}
+              userName={userData.username}
+              userAvatar={userData.avatar}
             />
 
             <FileSection
               isLoggedIn={isLoggedIn}
               files={files}
-              onDownload={handleDownload}
               onEdit={handleEditFile}
               bucketName={currentBucket?.name}
             />
@@ -277,7 +377,9 @@ function App() {
             file={editingFile}
             onClose={() => setEditingFile(null)}
             onSave={handleSaveFile}
-            onDownload={(file, content) => handleDownload(file, content)}
+            onDownload={(file) => handleDownload(file)}
+            username={userData.username}
+            bucketName={currentBucket?.name}
           />
         )}
 

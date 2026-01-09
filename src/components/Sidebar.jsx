@@ -2,15 +2,15 @@ import '../css/Sidebar.css'
 import BucketBar from './BucketBar'
 
 // 侧边栏组件
-function Sidebar({ isLoggedIn, onUpload, onBackup, onRestore, bucket, onOpenBucketManager }) {
+function Sidebar({ isLoggedIn, onUpload, onBackup, onRestore, bucket, onOpenBucketManager, userName, userAvatar }) {
   return (
     <aside className="sidebar">
       {isLoggedIn ? (
         <>
           <div className="user-info">
-            <div className="user-avatar">U</div>
+            <div className="user-avatar">{userAvatar ? <img src={(userAvatar.startsWith('http') || userAvatar.startsWith('/') ? userAvatar : '/' + userAvatar)} alt="avatar" /> : 'U'}</div>
             <div>
-              <h3>张三</h3>
+              <h3>{userName || '用户'}</h3>
             </div>
           </div>
           

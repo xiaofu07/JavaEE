@@ -73,6 +73,7 @@ body {
 /* 侧边栏样式 */
 .sidebar {
   width: 250px;
+  flex-shrink: 0;
   background: white;
   border-radius: 10px;
   padding: 20px;
