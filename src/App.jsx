@@ -6,9 +6,10 @@ import FileSection from './components/FileSection';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import FileEditor from './components/FileEditor';
+import ProgressBar from './components/ProgressBar';
 import { CollaborationProvider } from './contexts/CollaborationContext';
 import BucketManager from './components/BucketManager';
-import { uploadFile } from './utils/uploadService';
+import { uploadFile, cancelUpload } from './utils/uploadService';
 import { getAllBuckets, createBucket as apiCreateBucket, deleteBucket as apiDeleteBucket, getBucketFiles } from './utils/bucketService';
 
 // 主应用组件
@@ -30,6 +31,11 @@ function App() {
   });
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [uploadFileName, setUploadFileName] = useState('');
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadFileName, setDownloadFileName] = useState('');
+  const [progressStatus, setProgressStatus] = useState('uploading'); // 'uploading', 'downloading'
   const fileInputRef = useRef(null);
 
   const currentBucket = buckets.find(bucket => bucket.id === currentBucketId) || buckets[0];
@@ -149,6 +155,8 @@ function App() {
 
     setUploading(true);
     setUploadProgress(0);
+    setUploadFileName(file.name);
+    setProgressStatus('uploading');
 
     try {
       await uploadFile(file, userData.username, currentBucket?.name, setUploadProgress);
@@ -163,6 +171,7 @@ function App() {
     } finally {
       setUploading(false);
       setUploadProgress(0);
+      setUploadFileName('');
       e.target.value = '';
     }
   };
@@ -176,6 +185,11 @@ function App() {
 
   // 处理文件下载
   const handleDownload = async (file) => {
+    setDownloading(true);
+    setDownloadProgress(0);
+    setDownloadFileName(file.name);
+    setProgressStatus('downloading');
+
     try {
       const url = `/blob/${userData.username}/${currentBucket?.name}/${file.name}`;
       const res = await fetch(url, { credentials: 'include' });
@@ -184,7 +198,27 @@ function App() {
         throw new Error('下载失败');
       }
       
-      const blob = await res.blob();
+      // 获取文件总大小
+      const contentLength = parseInt(res.headers.get('content-length'), 10);
+      const reader = res.body.getReader();
+      const chunks = [];
+      let receivedLength = 0;
+
+      // 逐块读取并更新进度
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        receivedLength += value.length;
+        
+        if (contentLength) {
+          const percent = Math.round((receivedLength / contentLength) * 100);
+          setDownloadProgress(percent);
+        }
+      }
+
+      // 合并所有块
+      const blob = new Blob(chunks);
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
@@ -195,6 +229,10 @@ function App() {
       URL.revokeObjectURL(downloadUrl);
     } catch (err) {
       alert('下载失败: ' + (err.message || '未知错误'));
+    } finally {
+      setDownloading(false);
+      setDownloadProgress(0);
+      setDownloadFileName('');
     }
   };
 
@@ -348,6 +386,7 @@ function App() {
               isLoggedIn={isLoggedIn}
               files={files}
               onEdit={handleEditFile}
+              onDownload={handleDownload}
               bucketName={currentBucket?.name}
             />
           </div>
@@ -386,6 +425,35 @@ function App() {
           onRemovePermission={handleRemovePermission}
           currentUserId={userData.id}
         />
+
+        {/* 上传进度条 */}
+        {uploading && (
+          <ProgressBar
+            progress={uploadProgress}
+            status="uploading"
+            filename={uploadFileName}
+            onCancel={() => {
+              cancelUpload();
+              setUploading(false);
+              setUploadProgress(0);
+              setUploadFileName('');
+            }}
+          />
+        )}
+
+        {/* 下载进度条 */}
+        {downloading && (
+          <ProgressBar
+            progress={downloadProgress}
+            status="downloading"
+            filename={downloadFileName}
+            onCancel={() => {
+              setDownloading(false);
+              setDownloadProgress(0);
+              setDownloadFileName('');
+            }}
+          />
+        )}
       </div>
     </CollaborationProvider>
   );
