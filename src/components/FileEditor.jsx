@@ -290,13 +290,6 @@ const FileEditor = ({ file, onClose, onSave, onDownload, username, bucketName })
             </div>
 
             <div className="sidebar-section">
-              <h3>协作工具</h3>
-              <button className="btn btn-collab">分享链接</button>
-              <button className="btn btn-collab">邀请协作者</button>
-              <button className="btn btn-collab">添加评论</button>
-            </div>
-
-            <div className="sidebar-section">
               <h3>文件操作</h3>
               <button className="btn btn-file-action">重命名</button>
               <button className="btn btn-file-action">复制</button>

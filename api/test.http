@@ -1,10 +1,6 @@
 @host = localhost
 @port = 8080
 @url = http://{{host}}:{{port}}
-<<<<<<< HEAD
-@auth = Basic lingshin:sdfzsefjkt
-=======
->>>>>>> 74f91227fa0a969524001269cbd4d594d80978cd
 
 {{url}}/test
 
@@ -36,11 +32,7 @@ POST {{url}}/buckets
 Content-Type: application/json
 
 {
-<<<<<<< HEAD
-  "name":"zen",
-=======
   "name":"firefox",
->>>>>>> 74f91227fa0a969524001269cbd4d594d80978cd
   "description": "just a test"
 }
 
