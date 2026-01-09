@@ -65,7 +65,7 @@ Content-Type: application/json
 {
   "name":"mozilla",
   "description": "mozilla ok",
-  "members": [1]
+  "members": [1,2]
 }
 
 ###
@@ -91,8 +91,11 @@ GET {{url}}/team/124
 ###
 
 # @attach-cookie-jar
-GET {{url}}/blob/lingshin/firefox
+POST {{url}}/blob/lingshin/firefox/babylon.sql
+Upload-Hash: {{hash}}
+Content-Type: text/plain
 
+< ../sql/babylon.sql
 ###
 
 # @attach-cookie-jar
