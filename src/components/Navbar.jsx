@@ -6,11 +6,10 @@ function Navbar({ isLoggedIn, setIsLoggedIn, setShowAuthModal, viewingUser, view
     <nav className={`navbar ${isViewingOther ? 'viewing-other' : ''}`}>
       <div className="container navbar-content">
         <div className="logo">
-          <span className="logo-icon">☁️</span>
           {isViewingOther ? (
             <span>正在查看 <strong>{viewingUser?.name}</strong> 的桶: <strong>{viewingBucket?.name}</strong></span>
           ) : (
-            <span>深信服云存储</span>
+            <span>浅信服云存储</span>
           )}
         </div>
         <div className="nav-links">

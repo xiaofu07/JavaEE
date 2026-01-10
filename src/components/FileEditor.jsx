@@ -44,11 +44,11 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange, notify }) => {
   // 判断内容是否已修改
   const isModified = content !== originalContent;
   
-  // 构建文件URL
+  // 构建文件URL，添加版本ID防止缓存
   const ownerName = file.bucket?.owner?.name;
   const bucketName = file.bucket?.name;
   const baseUrl = `/blob/${ownerName}/${bucketName}/${file.name}`;
-  const fileUrl = baseUrl;
+  const fileUrl = `${baseUrl}?v=${currentVersion?.id || Date.now()}`;
 
   // 加载文本内容
   useEffect(() => {
