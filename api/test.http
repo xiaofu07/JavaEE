@@ -1,4 +1,4 @@
-@host = localhost
+@host = gungnir
 @port = 8080
 @url = http://{{host}}:{{port}}
 
@@ -24,6 +24,21 @@ Content-Type: application/json
   "username": "lingshin",
   "password": "emiya"
 }
+
+###
+
+# @attach-cookie-jar
+GET {{url}}/users
+
+###
+
+# @attach-cookie-jar
+GET {{url}}/users/2
+
+###
+
+# @attach-cookie-jar
+GET {{url}}/user
 
 ###
 
@@ -101,7 +116,12 @@ GET {{url}}/blob/lingshin/firefox
 ###
 
 # @attach-cookie-jar
-DELETE {{url}}/blob/lingshin/firefox/dotfile-dependencies
+GET {{url}}/blob/lingshin/firefox/justfile
+
+###
+
+# @attach-cookie-jar
+DELETE {{url}}/blob/lingshin/firefox/justfile
 
 ###
 
@@ -115,5 +135,5 @@ PATCH {{url}}/blob/lingshin/firefox/justfile
 Content-Type: application/json
 
 {
-  "mimetype": "text/plain"
+  "currentId": 1
 }

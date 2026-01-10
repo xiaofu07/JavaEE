@@ -56,4 +56,22 @@ export async function getBucketFiles(username, bucketName) {
   return body.data;
 }
 
-export default { getAllBuckets, getBucket, createBucket, deleteBucket, getBucketFiles };
+// 获取所有用户
+export async function getAllUsers() {
+  const res = await fetch('/users', { credentials: 'include' });
+  if (!res.ok) throw new Error('获取用户列表失败');
+  const body = await res.json();
+  if (body.code !== 200) throw new Error(body.msg || '获取用户列表失败');
+  return body.data;
+}
+
+// 获取指定用户的桶列表
+export async function getUserBuckets(username) {
+  const res = await fetch(`/blob/${username}`, { credentials: 'include' });
+  if (!res.ok) throw new Error('获取用户桶列表失败');
+  const body = await res.json();
+  if (body.code !== 200) throw new Error(body.msg || '获取用户桶列表失败');
+  return body.data;
+}
+
+export default { getAllBuckets, getBucket, createBucket, deleteBucket, getBucketFiles, getAllUsers, getUserBuckets };

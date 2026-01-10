@@ -88,7 +88,7 @@ const tasks = Array.from({length: chunk_num}, (_, index) => {
 const checksum_list = await Promise.all(tasks)
 
 const typeInfo = await fileTypeFromFile(option.path);
-const contentType = typeInfo ? typeInfo.mime : 'application/octet-stream';
+const contentType = typeInfo ? typeInfo.mime : 'text/plain';
 
 const url = new URL(option.url)
 url.searchParams.set('mimetype', contentType)

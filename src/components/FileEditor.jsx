@@ -1,32 +1,48 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
 import '../css/FileEditor.css';
+import { uploadFile } from '../utils/uploadService';
 
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
 
-const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
+const FileEditor = ({ file, onClose, onDownload, onFileChange, notify }) => {
   const [content, setContent] = useState('');
+  const [originalContent, setOriginalContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [currentVersion, setCurrentVersion] = useState(file.current);
-  const [description, setDescription] = useState(file.description || '');
+  const [displayDescription, setDisplayDescription] = useState(file.description || '');
+  const [editingDescription, setEditingDescription] = useState(file.description || '');
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(file.name);
   const [actionLoading, setActionLoading] = useState(false);
+  const [displayMimeType, setDisplayMimeType] = useState(file.mimeType || '');
+  const [editingMimeType, setEditingMimeType] = useState(file.mimeType || '');
+  const [isEditingMime, setIsEditingMime] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isEditingText, setIsEditingText] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const showNotify = notify || ((msg, type) => console.log(`[${type}] ${msg}`));
 
   // 判断文件类型
-  const isImage = file.mimeType?.startsWith('image/');
-  const isVideo = file.mimeType?.startsWith('video/');
-  const isAudio = file.mimeType?.startsWith('audio/');
-  const isText = file.mimeType?.startsWith('text/') || 
-                 file.mimeType === 'application/json' ||
-                 file.mimeType === 'application/javascript' ||
-                 file.mimeType === 'application/xml';
+  const isImage = displayMimeType?.startsWith('image/');
+  const isVideo = displayMimeType?.startsWith('video/');
+  const isAudio = displayMimeType?.startsWith('audio/');
+  const isText = displayMimeType?.startsWith('text/') || 
+                 displayMimeType === 'application/json' ||
+                 displayMimeType === 'application/javascript' ||
+                 displayMimeType === 'application/xml';
+  
+  // 判断内容是否已修改
+  const isModified = content !== originalContent;
   
   // 构建文件URL
   const ownerName = file.bucket?.owner?.name;
@@ -42,10 +58,12 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
         .then(res => res.text())
         .then(text => {
           setContent(text);
+          setOriginalContent(text);
           setLoading(false);
         })
         .catch(() => {
           setContent('加载失败');
+          setOriginalContent('');
           setLoading(false);
         });
     }
@@ -83,12 +101,14 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
       });
       const data = await res.json();
       if (data.code === 200) {
+        console.log(data)
         const newVersion = history.find(h => h.id === versionId);
         setCurrentVersion(newVersion);
+        showNotify('版本切换成功', 'success');
         onFileChange?.();
       }
     } catch (e) {
-      console.error('切换版本失败', e);
+      showNotify('切换版本失败', 'error');
     }
     setActionLoading(false);
   };
@@ -105,10 +125,11 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
       const data = await res.json();
       if (data.code === 200) {
         setHistory(prev => prev.filter(h => h.id !== versionId));
+        showNotify('版本删除成功', 'success');
         onFileChange?.();
       }
     } catch (e) {
-      console.error('删除版本失败', e);
+      showNotify('删除版本失败', 'error');
     }
     setActionLoading(false);
   };
@@ -124,11 +145,12 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
       });
       const data = await res.json();
       if (data.code === 200) {
+        showNotify('文件删除成功', 'success');
         onFileChange?.();
         onClose();
       }
     } catch (e) {
-      console.error('删除文件失败', e);
+      showNotify('删除文件失败', 'error');
     }
     setActionLoading(false);
   };
@@ -149,11 +171,12 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
       });
       const data = await res.json();
       if (data.code === 200) {
+        showNotify('重命名成功', 'success');
         onFileChange?.();
         onClose();
       }
     } catch (e) {
-      console.error('重命名失败', e);
+      showNotify('重命名失败', 'error');
     }
     setActionLoading(false);
     setIsRenaming(false);
@@ -167,17 +190,125 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: description.trim() })
+        body: JSON.stringify({ description: editingDescription.trim() })
       });
       const data = await res.json();
       if (data.code === 200) {
+        setDisplayDescription(editingDescription.trim());
+        showNotify('描述更新成功', 'success');
         onFileChange?.();
       }
     } catch (e) {
-      console.error('更新描述失败', e);
+      showNotify('更新描述失败', 'error');
     }
     setActionLoading(false);
     setIsEditingDesc(false);
+  };
+
+  // 更新 mimeType
+  const handleUpdateMimeType = async () => {
+    if (!editingMimeType.trim() || editingMimeType === displayMimeType) {
+      setIsEditingMime(false);
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const res = await fetch(baseUrl, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mimetype: editingMimeType.trim() })
+      });
+      const data = await res.json();
+      if (data.code === 200) {
+        setDisplayMimeType(editingMimeType.trim());
+        showNotify('文件类型更新成功', 'success');
+        onFileChange?.();
+      }
+    } catch (e) {
+      showNotify('更新文件类型失败', 'error');
+    }
+    setActionLoading(false);
+    setIsEditingMime(false);
+  };
+
+  // 上传新版本
+  const handleUploadNewVersion = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // 创建一个新的 File 对象，使用原文件名
+      const renamedFile = new File([selectedFile], file.name, { type: selectedFile.type });
+      
+      await uploadFile(renamedFile, ownerName, bucketName, setUploadProgress);
+      
+      showNotify('新版本上传成功', 'success');
+      
+      // 刷新历史记录
+      const res = await fetch(`${baseUrl}/history`, { credentials: 'include' });
+      const data = await res.json();
+      if (data.code === 200) {
+        setHistory(data.data || []);
+        if (data.data?.length > 0) {
+          setCurrentVersion(data.data[data.data.length - 1]);
+        }
+      }
+      
+      onFileChange?.();
+    } catch (err) {
+      showNotify('上传失败: ' + (err.message || '未知错误'), 'error');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+      e.target.value = '';
+    }
+  };
+
+  // 保存文本内容
+  const handleSaveTextContent = async () => {
+    if (!isModified) return;
+    
+    setIsSaving(true);
+    try {
+      // 将文本内容转为 Blob，再用 uploadFile 上传
+      const blob = new Blob([content], { type: displayMimeType || 'text/plain' });
+      const textFile = new File([blob], file.name, { type: displayMimeType || 'text/plain' });
+      
+      await uploadFile(textFile, ownerName, bucketName, () => {});
+      
+      setOriginalContent(content);
+      showNotify('保存成功', 'success');
+      
+      // 刷新历史记录
+      const res = await fetch(`${baseUrl}/history`, { credentials: 'include' });
+      const data = await res.json();
+      if (data.code === 200) {
+        setHistory(data.data || []);
+        if (data.data?.length > 0) {
+          setCurrentVersion(data.data[data.data.length - 1]);
+        }
+      }
+      
+      onFileChange?.();
+    } catch (err) {
+      showNotify('保存失败: ' + (err.message || '未知错误'), 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // 取消编辑，恢复原内容
+  const handleCancelEdit = () => {
+    setContent(originalContent);
+    setIsEditingText(false);
   };
 
   return (
@@ -215,8 +346,24 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
 
         <div className="editor-main">
           <div className="file-info">
-            <div className="info-item">
-              <strong>文件类型:</strong> {file.mimeType || '未知'}
+            <div className="info-item description-item">
+              <strong>文件类型:</strong>
+              {isEditingMime ? (
+                <span className="desc-edit">
+                  <input
+                    type="text"
+                    value={editingMimeType}
+                    onChange={(e) => setEditingMimeType(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleUpdateMimeType()}
+                  />
+                  <button className="btn btn-small" onClick={handleUpdateMimeType}>保存</button>
+                  <button className="btn btn-small" onClick={() => { setIsEditingMime(false); setEditingMimeType(displayMimeType); }}>取消</button>
+                </span>
+              ) : (
+                <span onClick={() => { setIsEditingMime(true); setEditingMimeType(displayMimeType); }} style={{ cursor: 'pointer' }} title="点击编辑">
+                  {displayMimeType || '未知'}
+                </span>
+              )}
             </div>
             <div className="info-item">
               <strong>最后修改:</strong> {currentVersion?.time ? dayjs(currentVersion.time).fromNow() : '未知'}
@@ -230,16 +377,16 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
                 <span className="desc-edit">
                   <input
                     type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={editingDescription}
+                    onChange={(e) => setEditingDescription(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleUpdateDescription()}
                   />
                   <button className="btn btn-small" onClick={handleUpdateDescription}>保存</button>
-                  <button className="btn btn-small" onClick={() => setIsEditingDesc(false)}>取消</button>
+                  <button className="btn btn-small" onClick={() => { setIsEditingDesc(false); setEditingDescription(displayDescription); }}>取消</button>
                 </span>
               ) : (
-                <span onClick={() => setIsEditingDesc(true)} style={{ cursor: 'pointer' }} title="点击编辑">
-                  {file.description || '无描述，点击添加'}
+                <span onClick={() => { setIsEditingDesc(true); setEditingDescription(displayDescription); }} style={{ cursor: 'pointer' }} title="点击编辑">
+                  {displayDescription || '无描述，点击添加'}
                 </span>
               )}
             </div>
@@ -269,7 +416,46 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
                 loading ? (
                   <div className="loading">加载中...</div>
                 ) : (
-                  <pre className="text-preview">{content}</pre>
+                  <div className="text-editor-container">
+                    <div className="text-editor-toolbar">
+                      {isEditingText ? (
+                        <>
+                          <button 
+                            className="btn btn-small btn-save-text" 
+                            onClick={handleSaveTextContent}
+                            disabled={isSaving || !isModified}
+                          >
+                            {isSaving ? '保存中...' : '保存'}
+                          </button>
+                          <button 
+                            className="btn btn-small" 
+                            onClick={handleCancelEdit}
+                            disabled={isSaving}
+                          >
+                            取消
+                          </button>
+                          {isModified && <span className="modified-hint">● 已修改</span>}
+                        </>
+                      ) : (
+                        <button 
+                          className="btn btn-small" 
+                          onClick={() => setIsEditingText(true)}
+                        >
+                          编辑
+                        </button>
+                      )}
+                    </div>
+                    {isEditingText ? (
+                      <textarea
+                        className="text-editor"
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        spellCheck={false}
+                      />
+                    ) : (
+                      <pre className="text-preview">{content}</pre>
+                    )}
+                  </div>
                 )
               ) : (
                 <div className="unsupported-preview">
@@ -321,6 +507,19 @@ const FileEditor = ({ file, onClose, onDownload, onFileChange }) => {
                   ))}
                 </ul>
               )}
+              <button 
+                className="btn btn-file-action" 
+                onClick={handleUploadNewVersion}
+                disabled={isUploading}
+              >
+                {isUploading ? `上传中 ${uploadProgress}%` : '上传新版本'}
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+              />
             </div>
 
             <div className="sidebar-section">

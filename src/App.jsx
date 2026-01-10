@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import './css/App.css';
 import { login } from './utils/userService.js'
 import AuthModal from './components/AuthModal';
@@ -11,6 +11,7 @@ import { CollaborationProvider } from './contexts/CollaborationContext';
 import BucketManager from './components/BucketManager';
 import { uploadFile, cancelUpload } from './utils/uploadService';
 import { getAllBuckets, createBucket as apiCreateBucket, deleteBucket as apiDeleteBucket, getBucketFiles } from './utils/bucketService';
+import { NotificationContainer } from './components/Notification';
 
 // 主应用组件
 function App() {
@@ -24,6 +25,8 @@ function App() {
   const [files, setFiles] = useState([]);
   const [editingFile, setEditingFile] = useState(null);
   const [showBucketManager, setShowBucketManager] = useState(false);
+  const [viewingUser, setViewingUser] = useState(null); // 正在查看的其他用户
+  const [viewingBucket, setViewingBucket] = useState(null); // 正在查看的其他用户的桶
   const [userData, setUserData] = useState({
     id: initialUserId,
     username: initialUsername,
@@ -36,9 +39,21 @@ function App() {
   const [downloading, setDownloading] = useState(false);
   const [downloadFileName, setDownloadFileName] = useState('');
   const [progressStatus, setProgressStatus] = useState('uploading'); // 'uploading', 'downloading'
+  const [notifications, setNotifications] = useState([]);
   const fileInputRef = useRef(null);
 
-  const currentBucket = buckets.find(bucket => bucket.id === currentBucketId) || buckets[0];
+  const notify = useCallback((message, type = 'info', duration = 3000) => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type, duration }]);
+  }, []);
+
+  const removeNotification = useCallback((id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  // 如果在查看其他用户的桶，使用那个；否则用自己的
+  const currentBucket = viewingBucket || buckets.find(bucket => bucket.id === currentBucketId) || buckets[0];
+  const isViewingOther = !!viewingUser;
 
   // 初始化用户ID
   useEffect(() => {
@@ -68,14 +83,16 @@ function App() {
     if (!isLoggedIn || !currentBucket) return;
     (async () => {
       try {
-        const data = await getBucketFiles(userData.username, currentBucket.name);
+        // 如果在查看其他用户，使用其他用户的名字
+        const ownerName = viewingUser?.name || userData.username;
+        const data = await getBucketFiles(ownerName, currentBucket.name);
         setFiles(data || []);
       } catch (err) {
         console.error('获取文件列表失败:', err);
         setFiles([]);
       }
     })();
-  }, [isLoggedIn, currentBucket?.id, userData.username]);
+  }, [isLoggedIn, currentBucket?.id, currentBucket?.name, userData.username, viewingUser?.name]);
 
   // 根据 cookie 自动登录
   useEffect(() => {
@@ -106,7 +123,7 @@ function App() {
       setIsLoggedIn(true);
       setShowAuthModal(false);
     } catch (err) {
-      alert(err.message || '登录失败');
+      notify(err.message || '登录失败', 'error');
     }
   };
 
@@ -120,7 +137,7 @@ function App() {
     const password = pwInputs[0]?.value;
     const confirm = pwInputs[1]?.value;
     if (password !== confirm) {
-      alert('两次输入的密码不一致');
+      notify('两次输入的密码不一致', 'error');
       return;
     }
     try {
@@ -140,7 +157,7 @@ function App() {
       setIsLoggedIn(true);
       setShowAuthModal(false);
     } catch (err) {
-      alert(err.message || '注册失败');
+      notify(err.message || '注册失败', 'error');
     }
   };
 
@@ -165,9 +182,9 @@ function App() {
       const data = await getBucketFiles(userData.username, currentBucket.name);
       setFiles(data || []);
       
-      alert('文件上传成功！');
+      notify('文件上传成功！', 'success');
     } catch (err) {
-      alert('上传失败: ' + (err.message || '未知错误'));
+      notify('上传失败: ' + (err.message || '未知错误'), 'error');
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -228,7 +245,7 @@ function App() {
       document.body.removeChild(a);
       URL.revokeObjectURL(downloadUrl);
     } catch (err) {
-      alert('下载失败: ' + (err.message || '未知错误'));
+      notify('下载失败: ' + (err.message || '未知错误'), 'error');
     } finally {
       setDownloading(false);
       setDownloadProgress(0);
@@ -278,9 +295,22 @@ function App() {
     setShowBucketManager(false);
   };
 
+  // 选择其他用户的桶
+  const handleSelectOtherBucket = (user, bucket) => {
+    setViewingUser(user);
+    setViewingBucket(bucket);
+    setShowBucketManager(false);
+  };
+
+  // 返回自己的桶
+  const handleBackToMyBuckets = () => {
+    setViewingUser(null);
+    setViewingBucket(null);
+  };
+
   const handleCreateBucket = async ({ name, capacityGB }) => {
     if (!name) {
-      alert('请输入桶名称');
+      notify('请输入桶名称', 'warning');
       return;
     }
     try {
@@ -288,7 +318,7 @@ function App() {
       setBuckets(prev => [...prev, newBucket]);
       setCurrentBucketId(newBucket.id);
     } catch (err) {
-      alert('创建桶失败: ' + (err.message || '未知错误'));
+      notify('创建桶失败: ' + (err.message || '未知错误'), 'error');
     }
   };
 
@@ -296,7 +326,7 @@ function App() {
     const target = buckets.find(b => b.id === bucketId);
     if (!target) return;
     if (buckets.length <= 1) {
-      alert('至少需要保留一个桶');
+      notify('至少需要保留一个桶', 'warning');
       return;
     }
     try {
@@ -308,7 +338,7 @@ function App() {
         return filtered;
       });
     } catch (err) {
-      alert('删除桶失败: ' + (err.message || '未知错误'));
+      notify('删除桶失败: ' + (err.message || '未知错误'), 'error');
     }
   };
 
@@ -347,6 +377,9 @@ function App() {
           isLoggedIn={isLoggedIn}
           setIsLoggedIn={setIsLoggedIn}
           setShowAuthModal={setShowAuthModal}
+          viewingUser={viewingUser}
+          viewingBucket={viewingBucket}
+          onBackToMyBuckets={handleBackToMyBuckets}
         />
 
         <div className="container">
@@ -357,8 +390,9 @@ function App() {
               onBackup={handleBackup}
               bucket={currentBucket}
               onOpenBucketManager={() => setShowBucketManager(true)}
-              userName={userData.username}
-              userAvatar={userData.avatar}
+              userName={isViewingOther ? viewingUser?.name : userData.username}
+              userAvatar={isViewingOther ? viewingUser?.avatar : userData.avatar}
+              isViewingOther={isViewingOther}
             />
 
             <FileSection
@@ -393,6 +427,7 @@ function App() {
                 setFiles(data || []);
               }
             }}
+            notify={notify}
           />
         )}
 
@@ -407,6 +442,8 @@ function App() {
           onAddPermission={handleAddPermission}
           onRemovePermission={handleRemovePermission}
           currentUserId={userData.id}
+          currentUsername={userData.username}
+          onSelectOtherBucket={handleSelectOtherBucket}
         />
 
         {/* 上传进度条 */}
@@ -437,6 +474,9 @@ function App() {
             }}
           />
         )}
+
+        {/* 通知 */}
+        <NotificationContainer notifications={notifications} removeNotification={removeNotification} />
       </div>
     </CollaborationProvider>
   );

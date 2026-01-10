@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import '../css/App.css';
+import { getAllUsers, getUserBuckets } from '../utils/bucketService';
 
 function BucketManager({
   open,
@@ -11,16 +12,53 @@ function BucketManager({
   onDeleteBucket,
   onAddPermission,
   onRemovePermission,
-  currentUserId
+  currentUserId,
+  currentUsername,
+  onSelectOtherBucket
 }) {
   const [newBucketName, setNewBucketName] = useState('');
   const [newBucketCapacity, setNewBucketCapacity] = useState(10);
   const [permUserId, setPermUserId] = useState('');
   const [permUsername, setPermUsername] = useState('');
   const [permRole, setPermRole] = useState('read');
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [otherBuckets, setOtherBuckets] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingBuckets, setLoadingBuckets] = useState(false);
 
   const currentBucket = buckets.find(b => b.id === currentBucketId) || buckets[0];
   const isOwner = currentBucket && currentBucket.ownerId === currentUserId;
+
+  // 加载用户列表
+  useEffect(() => {
+    if (open) {
+      setLoadingUsers(true);
+      getAllUsers()
+        .then(data => {
+          // 过滤掉当前用户
+          setUsers(data.filter(u => u.id !== currentUserId));
+        })
+        .catch(err => console.error('获取用户列表失败:', err))
+        .finally(() => setLoadingUsers(false));
+    }
+  }, [open, currentUserId]);
+
+  // 当选择其他用户时，加载其桶列表
+  useEffect(() => {
+    if (selectedUser) {
+      setLoadingBuckets(true);
+      getUserBuckets(selectedUser.name)
+        .then(data => setOtherBuckets(data || []))
+        .catch(err => {
+          console.error('获取用户桶列表失败:', err);
+          setOtherBuckets([]);
+        })
+        .finally(() => setLoadingBuckets(false));
+    } else {
+      setOtherBuckets([]);
+    }
+  }, [selectedUser]);
 
   if (!open) return null;
 
@@ -39,6 +77,13 @@ function BucketManager({
     setPermUserId('');
     setPermUsername('');
     setPermRole('read');
+  };
+
+  const handleSelectOtherBucket = (bucket) => {
+    if (onSelectOtherBucket) {
+      onSelectOtherBucket(selectedUser, bucket);
+      onClose();
+    }
   };
 
   return (
@@ -131,6 +176,56 @@ function BucketManager({
               </>
             ) : (
               <div className="bm-note">请选择一个桶</div>
+            )}
+          </div>
+
+          <div className="bm-column">
+            <div className="bm-section-title">浏览其他用户</div>
+            {loadingUsers ? (
+              <div className="bm-note">加载中...</div>
+            ) : (
+              <>
+                <div className="bm-user-list">
+                  {users.map(user => (
+                    <div
+                      key={user.id}
+                      className={`bm-user-item ${selectedUser?.id === user.id ? 'active' : ''}`}
+                      onClick={() => setSelectedUser(user)}
+                    >
+                      {user.avatar ? (
+                        <img src={`/${user.avatar}`} alt={user.name} className="bm-user-avatar" />
+                      ) : (
+                        <div className="bm-user-avatar-placeholder">{user.name.charAt(0).toUpperCase()}</div>
+                      )}
+                      <span className="bm-user-name">{user.name}</span>
+                    </div>
+                  ))}
+                  {users.length === 0 && <div className="bm-empty">暂无其他用户</div>}
+                </div>
+
+                {selectedUser && (
+                  <div className="bm-other-buckets">
+                    <div className="bm-section-title">{selectedUser.name} 的桶</div>
+                    {loadingBuckets ? (
+                      <div className="bm-note">加载中...</div>
+                    ) : (
+                      <div className="bm-bucket-list">
+                        {otherBuckets.map(bucket => (
+                          <div
+                            key={bucket.id}
+                            className="bm-bucket-item"
+                            onClick={() => handleSelectOtherBucket(bucket)}
+                          >
+                            <div className="bm-bucket-name">{bucket.name}</div>
+                            <div className="bm-bucket-meta">{bucket.description || '无描述'}</div>
+                          </div>
+                        ))}
+                        {otherBuckets.length === 0 && <div className="bm-empty">该用户暂无公开桶</div>}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
