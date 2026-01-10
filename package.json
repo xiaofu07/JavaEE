@@ -11,6 +11,8 @@
     "scp": "vite build && scp -r ./dist/* fu@lingshin:web"
   },
   "dependencies": {
+    "@untitledui/file-icons": "^0.0.9",
+    "dayjs": "^1.11.19",
     "file-type": "^21.3.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

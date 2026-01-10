@@ -64,28 +64,28 @@ export async function uploadFile(file, username, bucket, onProgress = () => {}) 
       if (uploadController.signal.aborted) {
         throw new Error('上传已取消');
       }
-      
+
       const start = i * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, size);
       const chunk = file.slice(start, end);
       const buffer = await chunk.arrayBuffer();
-      
+
       const checksum = await uploadChunk(buffer);
       checksumList.push(checksum);
-      
+
       // 更新进度
       const percent = Math.round(((i + 1) / chunkNum) * 100);
       onProgress(percent);
     }
-    
+
     // 使用 file-type 获取 MIME 类型
     const typeInfo = await fileTypeFromBlob(file);
-    const contentType = typeInfo ? typeInfo.mime : 'application/octet-stream';
-    
+    const contentType = typeInfo ? typeInfo.mime : 'text/plain';
+
     // 发送manifest请求，合并分块
     const url = new URL(`/blob/${username}/${bucket}/${file.name}`, window.location.origin);
     url.searchParams.set('mimetype', contentType);
-    
+
     const manifestResponse = await fetch(url.toString(), {
       method: 'POST',
       headers: {
@@ -95,11 +95,11 @@ export async function uploadFile(file, username, bucket, onProgress = () => {}) 
       body: JSON.stringify(checksumList),
       signal: uploadController.signal,
     });
-    
+
     if (!manifestResponse.ok) {
       throw new Error(`文件合并失败: ${manifestResponse.status}`);
     }
-    
+
     const manifest = await manifestResponse.json();
     return manifest;
   } finally {

@@ -253,11 +253,7 @@ function App() {
   // 处理文件编辑
   const handleEditFile = (file) => {
     // 添加示例内容
-    const fileToEdit = { ...file };
-    if (!fileToEdit.content) {
-      fileToEdit.content = getDefaultContent(file.type, file.name);
-    }
-    setEditingFile(fileToEdit);
+    setEditingFile(file);
   };
 
   // 保存文件编辑内容
@@ -389,10 +385,14 @@ function App() {
           <FileEditor
             file={editingFile}
             onClose={() => setEditingFile(null)}
-            onSave={handleSaveFile}
             onDownload={(file) => handleDownload(file)}
-            username={userData.username}
-            bucketName={currentBucket?.name}
+            onFileChange={async () => {
+              // 刷新文件列表
+              if (currentBucket) {
+                const data = await getBucketFiles(userData.username, currentBucket.name);
+                setFiles(data || []);
+              }
+            }}
           />
         )}
 

@@ -1,4 +1,4 @@
-@host = gungnir
+@host = localhost
 @port = 8080
 @url = http://{{host}}:{{port}}
 
@@ -101,7 +101,7 @@ GET {{url}}/blob/lingshin/firefox
 ###
 
 # @attach-cookie-jar
-DELETE {{url}}/blob/lingshin/firefox/justfile?hash=d3
+DELETE {{url}}/blob/lingshin/firefox/dotfile-dependencies
 
 ###
 
@@ -115,6 +115,5 @@ PATCH {{url}}/blob/lingshin/firefox/justfile
 Content-Type: application/json
 
 {
-  "description": "hello world",
-  "currentHash": "d6"
+  "mimetype": "text/plain"
 }

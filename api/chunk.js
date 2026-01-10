@@ -20,15 +20,16 @@ const options = {
 }
 
 const solve = ({ values, positionals }) => ({
-  host: values.host || "localhost",
+  host: values.host || "gungnir",
   port: values.port || "8080",
   user: values.user || "lingshin",
   password: values.password || "emiya",
   bucket: values.bucket || "firefox",
-  path: values.file || positionals[0],
+  _file: values.file,
+  path: positionals[0],
 
   get file(){
-    return path.basename(this.path)
+    return this._file || path.basename(this.path)
   },
 
   get base(){
